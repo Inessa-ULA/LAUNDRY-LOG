@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Laundry Log</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #17282a;
+    --paper: #f4f6f4;
+    --card: #ffffff;
+    --accent: #1d7a63;
+    --accent-dark: #14574a;
+    --accent-light: #dff0e9;
+    --warm: #d98a2b;
+    --warm-light: #faead2;
+    --danger: #b8493f;
+    --danger-light: #f6e2df;
+    --line: #dbe2de;
+    --muted: #6c7a76;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Manrope', system-ui, sans-serif;
+    overscroll-behavior: none;
+    user-select: none;
+  }
+  #app { min-height: 100vh; display: flex; flex-direction: column; }
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 20px; background: var(--accent-dark); color: #fff;
+    flex-shrink: 0;
+  }
+  .topbar .brand { display: flex; align-items: center; gap: 10px; }
+  .topbar .brand-mark {
+    width: 34px; height: 34px; border-radius: 8px; background: var(--warm);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Space Mono', monospace; font-weight: 700; font-size: 15px; color: var(--accent-dark);
+  }
+  .topbar h1 { font-size: 18px; margin: 0; font-weight: 800; letter-spacing: -0.01em; }
+  .topbar .sub { font-size: 12px; opacity: 0.75; margin: 0; }
+  .icon-btn {
+    background: rgba(255,255,255,0.12); border: none; color: #fff;
+    width: 46px; height: 46px; border-radius: 12px; font-size: 20px;
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+  }
+  .icon-btn:active { background: rgba(255,255,255,0.25); }
+  main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+  /* ---------- HOME / PICKER ---------- */
+  .search-wrap { padding: 16px 20px 8px; flex-shrink: 0; }
+  .search-wrap input {
+    width: 100%; padding: 14px 16px; border-radius: 12px; border: 1.5px solid var(--line);
+    font-size: 16px; font-family: inherit; background: var(--card); color: var(--ink);
+  }
+  .search-wrap input:focus { outline: none; border-color: var(--accent); }
+  .grid-scroll { flex: 1; overflow-y: auto; padding: 8px 20px 24px; }
+  .prop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  .prop-card {
+    background: var(--card); border: 1.5px solid var(--line); border-radius: 14px;
+    padding: 16px 14px; text-align: left; cursor: pointer; min-height: 76px;
+    display: flex; align-items: center; font-size: 14.5px; font-weight: 700; line-height: 1.25;
+    color: var(--ink);
+  }
+  .prop-card:active { background: var(--accent-light); border-color: var(--accent); }
+  .no-results { text-align: center; color: var(--muted); padding: 40px 20px; font-size: 15px; }
+
+  /* ---------- TALLY VIEW ---------- */
+  .tally-view { flex: 1; display: flex; flex-direction: column; padding: 20px; }
+  .tally-header { text-align: center; margin-bottom: 6px; }
+  .tally-header .label { font-size: 13px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+  .tally-header h2 { font-size: 21px; margin: 4px 0 0; font-weight: 800; }
+  .change-link { background: none; border: none; color: var(--accent); font-weight: 700; font-size: 14px; padding: 6px; margin: 0 auto; display: block; }
+
+  .meter {
+    margin: 24px auto; background: var(--ink); border-radius: 18px; padding: 22px 32px;
+    display: inline-block; align-self: center;
+  }
+  .meter .n {
+    font-family: 'Space Mono', monospace; font-weight: 700; font-size: 64px;
+    color: #8ff0c9; letter-spacing: 0.02em; line-height: 1;
+  }
+  .meter .n-label { font-size: 12px; color: #8ff0c9; opacity: 0.65; text-align: center; margin-top: 6px; font-weight: 700; letter-spacing: 0.08em; }
+
+  .tap-btn {
+    flex: 1; border: none; border-radius: 22px; background: var(--accent); color: #fff;
+    font-family: 'Manrope', sans-serif; font-weight: 800; font-size: 26px; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+    min-height: 180px;
+  }
+  .tap-btn:active { background: var(--accent-dark); }
+  .tap-btn .plus { font-size: 46px; line-height: 1; }
+
+  .tally-actions { display: flex; gap: 10px; margin-top: 14px; }
+  .btn-minus {
+    width: 64px; border: 1.5px solid var(--line); background: var(--card); border-radius: 14px;
+    font-size: 24px; font-weight: 800; color: var(--muted); cursor: pointer;
+  }
+  .btn-minus:active { background: var(--danger-light); border-color: var(--danger); color: var(--danger); }
+  .btn-save {
+    flex: 1; border: none; background: var(--warm); color: #fff; border-radius: 14px;
+    font-size: 17px; font-weight: 800; padding: 0 16px; cursor: pointer;
+  }
+  .btn-save:active { background: #b9761f; }
+  .btn-save:disabled { background: var(--line); color: var(--muted); }
+  .btn-cancel {
+    margin-top: 10px; background: none; border: none; color: var(--muted); font-weight: 700;
+    font-size: 14px; padding: 10px; cursor: pointer;
+  }
+  .toast {
+    position: absolute; bottom: 24px; left: 20px; right: 20px; background: var(--ink); color: #fff;
+    padding: 14px 18px; border-radius: 12px; font-size: 14px; font-weight: 700; text-align: center;
+  }
+
+  /* ---------- HISTORY VIEW ---------- */
+  .history-view { flex: 1; overflow-y: auto; padding: 16px 20px 24px; }
+  .hist-summary { display: flex; gap: 10px; margin-bottom: 16px; }
+  .hist-stat { flex: 1; background: var(--card); border: 1.5px solid var(--line); border-radius: 14px; padding: 14px; }
+  .hist-stat .v { font-family: 'Space Mono', monospace; font-size: 26px; font-weight: 700; color: var(--accent-dark); }
+  .hist-stat .l { font-size: 12px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; margin-top: 2px; }
+  .hist-row {
+    display: flex; justify-content: space-between; align-items: center;
+    background: var(--card); border: 1.5px solid var(--line); border-radius: 12px;
+    padding: 12px 14px; margin-bottom: 8px;
+  }
+  .hist-room { font-size: 14px; font-weight: 700; flex: 1; padding-right: 10px; }
+  .hist-loads { font-family: 'Space Mono', monospace; font-weight: 700; font-size: 16px; color: var(--accent-dark); }
+  .empty-hist { text-align: center; color: var(--muted); padding: 50px 20px; font-size: 15px; }
+
+  .action-row { display: flex; gap: 10px; margin: 18px 0 8px; }
+  .btn-primary {
+    flex: 1; background: var(--accent); color: #fff; border: none; border-radius: 14px;
+    font-size: 15px; font-weight: 800; padding: 15px; cursor: pointer;
+  }
+  .btn-primary:active { background: var(--accent-dark); }
+  .btn-outline {
+    background: none; border: 1.5px solid var(--danger); color: var(--danger); border-radius: 14px;
+    font-size: 14px; font-weight: 800; padding: 15px 18px; cursor: pointer;
+  }
+  .btn-outline:active { background: var(--danger-light); }
+
+  .email-setting { margin-top: 4px; }
+  .email-setting label { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; display: block; margin-bottom: 6px; }
+  .email-setting input {
+    width: 100%; padding: 12px 14px; border-radius: 12px; border: 1.5px solid var(--line);
+    font-size: 15px; font-family: inherit; background: var(--card); color: var(--ink);
+  }
+  .email-setting input:focus { outline: none; border-color: var(--accent); }
+  .entry-log { margin-top: 18px; }
+  .entry-log h3 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin: 0 0 8px; }
+  .entry-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 4px; border-bottom: 1px solid var(--line); font-size: 13.5px;
+  }
+  .entry-item .meta { color: var(--muted); }
+  .entry-del { background: none; border: none; color: var(--danger); font-size: 13px; font-weight: 700; padding: 6px; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+const PROPERTIES = ["57 On North No4 3b4b - ULS57", "64 NBR 6b6b - ULS164", "7 M Bacon Ave 7b5b - ULS107", "Aruba 6 2b2b", "Camarque 11 3b2b - ULS21", "Cascades 74 2b1b - ULS9", "Cascades 91 1b1b - ULS91", "Cozumel 103 3b3b - ULS66", "Cozumel 113 2b2b - ULS64", "Cozumel 206 2b2b - ULS45", "Cozumel 213 3b2b - ULS213", "Cozumel 216 2b2b - ULS216", "Cozumel 218 2b2b - ULS129", "Cozumel 311 2b1b - ULS311", "Cozumel 316 2b1b", "Cozumel 317 2b2b - ULS4", "Cozumel 320 2b1b - ULS65", "Cozumel 322 3b2b - ULS322", "Cozumel 410 2b1b CB - ULS111", "Cozumel 411 2b1b - ULS63", "Isikhulu 23 2b2b", "Isikhulu 27b 2b2b - ULS108", "Isikhulu 31 2b1b", "Isikhulu 38 2b1b - ULS39", "Isikhulu 44 3b2b FB - ULS1", "Lazy Lizard 23 3b2b FB - ULS105", "Lazy Lizard 41 3b2b - ULS115", "Lazy Lizard 61 3b2b - ULS61", "Lazy Lizzard 51 3b2b - ULS51", "Mallorca 10 2b2b - ULS110", "Mallorca 11", "Mallorca 13 2b2b - ULS23", "Mallorca 20 2b1b - ULS25", "Mallorca 29 2b2b - ULS131", "Mallorca 41 2b1b - ULS128", "Mallorca 5   2b2b - ULS28", "Marginella 13 3b2b - ULS74", "Marginella 20 3b2b - ULS20", "Marginella 8 3b2b - ULS81", "Marginella 9 3b2b - ULS109", "Mini Perissa 19, Santorini  1b1b", "Pebble Beach 31, Ballito 3b2b", "Perissa 19, Santorini 3b2b - SF1", "Perissa 35, Santorini 3b2b", "Perna Perna 1 No 6 3b2b - ULS26", "Perna Perna 1 No 9 3b2b - ULS99", "Perna Perna 18 3b2b - ULS18", "Perna Perna 19 3b2b - ULS119", "Pyrgos 14, Santorini", "Sorgente 202 3b2b OWNERS ONLY", "Sorgente 206 3b2b - ULS38", "Sorgente 302 3b2b - ULS72", "Sorgente 303 3b2b - ULS126", "Sorgente 304 3b2b - ULS37", "Sorgente 305 3b2b - ULS6", "Sorgente 403 3b2b", "Sorgente 405 3b2b - ULS36", "Sorgente 406 3b2b - ULS35", "Sugar Beach 2A 3b2b - ULS88", "Sugar Beach 2B 3b2b - ULS121", "Sugar Beach 4A 3b2b - ULS47", "Sugar Beach 5A 3b2b - ULS54", "Sugar Beach 6B 3b2b - ULS 141", "Sugar Crest 3B 3b2b - ULS33", "Surfside C302 3b2b - ULS130", "Tahiti 11         3b2b - ULS30", "Tahiti 15         3b2b - ULS31", "The Old Beach House 3b2b - ULS143", "Thira 52, Santorini 2b2b - SF2", "Umdloti Cabanas 11 2b1b - ULS116", "Umdloti Cabanas 21 3b2b - ULS53", "Umdloti Cabanas 26 3b3b - ULS133", "Umdloti Cabanas 4 3b2b - ULS104", "Umdloti Cabanas 9 2b2b", "Umdloti Cottage on 5th Ave 3b3b", "Umdloti Resort 14 1B1B - ULS113", "Umdloti Resort 209 Studio - ULS134", "Umdloti Resort 515 1b1b - ULS135", "Umdloti Resort M17 1B1B - ULS123", "Villa Royale 1014 3b2b", "Waterfront 2 2b2b", "Waterfront 22 1b1b - ULS19", "Waterfront 33 2b1b - ULS103", "Waterfront 6 2b1b - ULS60", "Waterfront 8 2b1b - ULS22"];
+
+const STORAGE_KEY = "laundry_entries";
+
+function shortName(full) {
+  const i = full.indexOf(" - ULS");
+  const i2 = full.indexOf(" - ULS ");
+  if (i > -1) return full.slice(0, i).trim();
+  return full.trim();
+}
+
+let state = {
+  view: "home",
+  search: "",
+  selectedRoom: null,
+  taps: 0,
+  entries: [],
+  loaded: false,
+  toast: null,
+  emailTo: ""
+};
+
+const EMAIL_KEY = "laundry_notify_email";
+
+async function loadEntries() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    state.entries = raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    state.entries = [];
+  }
+  try {
+    state.emailTo = localStorage.getItem(EMAIL_KEY) || "";
+  } catch (e) {
+    state.emailTo = "";
+  }
+  state.loaded = true;
+  render();
+}
+
+async function saveEmail(addr) {
+  state.emailTo = addr;
+  try {
+    localStorage.setItem(EMAIL_KEY, addr);
+  } catch (e) {
+    console.error("Storage error", e);
+  }
+}
+
+function isSameDay(a, b) {
+  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+
+function emailTodaysLog() {
+  const today = new Date();
+  const todays = state.entries.filter(e => isSameDay(new Date(e.ts), today));
+  if (todays.length === 0) {
+    alert("No loads logged today yet.");
+    return;
+  }
+  const map = {};
+  todays.forEach(e => { map[e.room] = (map[e.room] || 0) + e.loads; });
+  const lines = Object.entries(map)
+    .sort((a, b) => b[1] - a[1])
+    .map(([room, loads]) => `${shortName(room)}: ${loads} load${loads === 1 ? "" : "s"}`);
+  const total = todays.reduce((s, e) => s + e.loads, 0);
+  const dateStr = today.toLocaleDateString();
+  const subject = `Laundry log — ${dateStr}`;
+  const body = `Laundry loads for ${dateStr}\n\n${lines.join("\n")}\n\nTotal: ${total} loads`;
+  const to = state.emailTo || "";
+  const url = `mailto:${encodeURIComponent(to)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  window.location.href = url;
+}
+
+async function saveEntries() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state.entries));
+  } catch (e) {
+    console.error("Storage error", e);
+  }
+}
+
+function goHome() {
+  state.view = "home";
+  state.selectedRoom = null;
+  state.taps = 0;
+  render();
+}
+
+function openTally(room) {
+  state.selectedRoom = room;
+  state.taps = 0;
+  state.view = "tally";
+  render();
+}
+
+function tap() {
+  state.taps += 1;
+  render();
+}
+
+function untap() {
+  if (state.taps > 0) state.taps -= 1;
+  render();
+}
+
+async function saveEntry() {
+  if (state.taps <= 0) return;
+  const entry = {
+    id: Date.now() + "_" + Math.random().toString(36).slice(2, 7),
+    room: state.selectedRoom,
+    loads: state.taps,
+    ts: new Date().toISOString()
+  };
+  state.entries.push(entry);
+  await saveEntries();
+  state.toast = `Saved ${entry.loads} load${entry.loads === 1 ? "" : "s"} — ${shortName(entry.room)}`;
+  goHome();
+  setTimeout(() => { state.toast = null; render(); }, 2200);
+}
+
+async function deleteEntry(id) {
+  state.entries = state.entries.filter(e => e.id !== id);
+  await saveEntries();
+  render();
+}
+
+async function resetMonth() {
+  if (!confirm("Export first if you haven't already — this clears every logged entry. Continue?")) return;
+  state.entries = [];
+  await saveEntries();
+  render();
+}
+
+function exportCSV() {
+  const rows = [["Room Name", "Loads", "Date", "Time"]];
+  const sorted = [...state.entries].sort((a, b) => {
+    if (a.room !== b.room) return a.room.localeCompare(b.room);
+    return new Date(a.ts) - new Date(b.ts);
+  });
+  sorted.forEach(e => {
+    const d = new Date(e.ts);
+    rows.push([e.room, e.loads, d.toLocaleDateString(), d.toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"})]);
+  });
+  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const today = new Date();
+  a.href = url;
+  a.download = `laundry_loads_${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function totalsByRoom() {
+  const map = {};
+  state.entries.forEach(e => {
+    if (!map[e.room]) map[e.room] = { loads: 0, count: 0 };
+    map[e.room].loads += e.loads;
+    map[e.room].count += 1;
+  });
+  return Object.entries(map).sort((a, b) => b[1].loads - a[1].loads);
+}
+
+function renderTopbar(title, sub, showHistoryBtn) {
+  return `
+    <div class="topbar">
+      <div class="brand">
+        <div class="brand-mark">L</div>
+        <div>
+          <h1>${title}</h1>
+          ${sub ? `<p class="sub">${sub}</p>` : ""}
+        </div>
+      </div>
+      ${showHistoryBtn ? `<button class="icon-btn" onclick="window.__nav('history')" aria-label="View totals">&#128203;</button>` : `<button class="icon-btn" onclick="window.__nav('home')" aria-label="Back">&#10005;</button>`}
+    </div>
+  `;
+}
+
+function renderHome() {
+  const q = state.search.trim().toLowerCase();
+  const filtered = PROPERTIES.filter(p => shortName(p).toLowerCase().includes(q) || p.toLowerCase().includes(q));
+  return `
+    ${renderTopbar("Laundry Log", `${PROPERTIES.length} properties`, true)}
+    <main>
+      <div class="search-wrap">
+        <input type="text" placeholder="Search property..." value="${state.search.replace(/"/g,'&quot;')}" oninput="window.__search(this.value)" autocomplete="off">
+      </div>
+      <div class="grid-scroll">
+        ${filtered.length === 0 ? `<div class="no-results">No property matches "${state.search}"</div>` : `
+          <div class="prop-grid">
+            ${filtered.map(p => `<button class="prop-card" onclick="window.__open('${p.replace(/'/g, "\\'")}')">${shortName(p)}</button>`).join("")}
+          </div>
+        `}
+      </div>
+    </main>
+    ${state.toast ? `<div class="toast">${state.toast}</div>` : ""}
+  `;
+}
+
+function renderTally() {
+  return `
+    ${renderTopbar("Log a load", null, false)}
+    <main>
+      <div class="tally-view">
+        <div class="tally-header">
+          <div class="label">Property</div>
+          <h2>${shortName(state.selectedRoom)}</h2>
+          <button class="change-link" onclick="window.__nav('home')">Change property</button>
+        </div>
+        <div class="meter">
+          <div class="n">${String(state.taps).padStart(2, "0")}</div>
+          <div class="n-label">loads</div>
+        </div>
+        <button class="tap-btn" onclick="window.__tap()">
+          <span class="plus">+</span>
+          <span>Tap for a load</span>
+        </button>
+        <div class="tally-actions">
+          <button class="btn-minus" onclick="window.__untap()" aria-label="Remove one">&minus;1</button>
+          <button class="btn-save" ${state.taps === 0 ? "disabled" : ""} onclick="window.__save()">Save ${state.taps} load${state.taps === 1 ? "" : "s"}</button>
+        </div>
+        <button class="btn-cancel" onclick="window.__nav('home')">Cancel</button>
+      </div>
+    </main>
+  `;
+}
+
+function renderHistory() {
+  const totals = totalsByRoom();
+  const totalLoads = state.entries.reduce((s, e) => s + e.loads, 0);
+  const sortedEntries = [...state.entries].sort((a, b) => new Date(b.ts) - new Date(a.ts));
+  return `
+    ${renderTopbar("Totals", "this period", false)}
+    <main>
+      <div class="history-view">
+        <div class="hist-summary">
+          <div class="hist-stat"><div class="v">${totalLoads}</div><div class="l">Total loads</div></div>
+          <div class="hist-stat"><div class="v">${totals.length}</div><div class="l">Properties</div></div>
+        </div>
+
+        <div class="action-row">
+          <button class="btn-primary" onclick="window.__export()">Export CSV for report</button>
+        </div>
+
+        <div class="email-setting">
+          <label for="email-input">Send today's log to</label>
+          <input id="email-input" type="email" placeholder="you@example.com" value="${(state.emailTo||"").replace(/"/g,'&quot;')}" onchange="window.__setEmail(this.value)" autocomplete="off">
+        </div>
+        <div class="action-row">
+          <button class="btn-primary" style="background:var(--warm);" onclick="window.__emailToday()">Email today's log</button>
+        </div>
+
+        ${totals.length === 0 ? `<div class="empty-hist">No loads logged yet this period.</div>` : `
+          ${totals.map(([room, v]) => `
+            <div class="hist-row">
+              <div class="hist-room">${shortName(room)}</div>
+              <div class="hist-loads">${v.loads} <span style="font-size:11px;color:var(--muted);font-weight:700;">(${v.count})</span></div>
+            </div>
+          `).join("")}
+        `}
+
+        ${state.entries.length > 0 ? `
+          <div class="entry-log">
+            <h3>All entries</h3>
+            ${sortedEntries.map(e => {
+              const d = new Date(e.ts);
+              return `
+                <div class="entry-item">
+                  <span>${shortName(e.room)} — ${e.loads} load${e.loads === 1 ? "" : "s"}</span>
+                  <span class="meta">${d.toLocaleDateString()}<button class="entry-del" onclick="window.__delEntry('${e.id}')">Delete</button></span>
+                </div>
+              `;
+            }).join("")}
+          </div>
+        ` : ""}
+
+        <div class="action-row" style="margin-top: 20px;">
+          <button class="btn-outline" onclick="window.__reset()">Reset for new month</button>
+        </div>
+      </div>
+    </main>
+  `;
+}
+
+function render() {
+  const app = document.getElementById("app");
+  if (!state.loaded) {
+    app.innerHTML = `<div style="padding:40px;text-align:center;color:var(--muted);">Loading...</div>`;
+    return;
+  }
+  if (state.view === "home") app.innerHTML = renderHome();
+  else if (state.view === "tally") app.innerHTML = renderTally();
+  else if (state.view === "history") app.innerHTML = renderHistory();
+}
+
+window.__nav = (v) => { state.view = v; state.search = ""; render(); };
+window.__search = (v) => { state.search = v; render(); };
+window.__open = (room) => openTally(room);
+window.__tap = () => tap();
+window.__untap = () => untap();
+window.__save = () => saveEntry();
+window.__delEntry = (id) => deleteEntry(id);
+window.__reset = () => resetMonth();
+window.__export = () => exportCSV();
+window.__setEmail = (v) => saveEmail(v);
+window.__emailToday = () => emailTodaysLog();
+
+loadEntries();
+</script>
+</body>
+</html>
