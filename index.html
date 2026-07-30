@@ -59,6 +59,18 @@
     font-size: 16px; font-family: inherit; background: var(--card); color: var(--ink);
   }
   .search-wrap input:focus { outline: none; border-color: var(--accent); }
+  .btn-add-prop-toggle {
+    margin-top: 8px; width: 100%; background: none; border: 1.5px dashed var(--accent);
+    color: var(--accent); border-radius: 12px; font-size: 14px; font-weight: 800;
+    padding: 10px; cursor: pointer;
+  }
+  .btn-add-prop-toggle:active { background: var(--accent-light); }
+  .add-prop-panel { display: flex; gap: 8px; margin-top: 8px; }
+  .add-prop-panel input {
+    flex: 1; padding: 12px 14px; border-radius: 12px; border: 1.5px solid var(--line);
+    font-size: 15px; font-family: inherit; background: var(--card); color: var(--ink);
+  }
+  .add-prop-panel input:focus { outline: none; border-color: var(--accent); }
   .grid-scroll { flex: 1; overflow-y: auto; padding: 8px 20px 24px; }
   .prop-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
   .prop-card {
@@ -151,6 +163,33 @@
     font-size: 15px; font-family: inherit; background: var(--card); color: var(--ink);
   }
   .email-setting input:focus { outline: none; border-color: var(--accent); }
+  .comments-section { margin-top: 22px; text-align: left; }
+  .comments-section h3 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin: 0 0 8px; }
+  .comment-input-row { display: flex; gap: 8px; }
+  .comment-input-row textarea {
+    flex: 1; padding: 10px 12px; border-radius: 12px; border: 1.5px solid var(--line);
+    font-size: 14px; font-family: inherit; background: var(--card); color: var(--ink);
+    resize: none; min-height: 44px;
+  }
+  .comment-input-row textarea:focus { outline: none; border-color: var(--accent); }
+  .btn-add-comment {
+    border: none; background: var(--accent); color: #fff; border-radius: 12px;
+    font-size: 14px; font-weight: 800; padding: 0 16px; cursor: pointer;
+  }
+  .btn-add-comment:active { background: var(--accent-dark); }
+  .comment-list { margin-top: 10px; }
+  .comment-item {
+    background: var(--card); border: 1.5px solid var(--line); border-radius: 12px;
+    padding: 10px 12px; margin-bottom: 8px;
+  }
+  .comment-item .txt { font-size: 14px; line-height: 1.35; }
+  .comment-item .meta { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; }
+  .comment-item .date { font-size: 11px; color: var(--muted); font-weight: 700; }
+  .comment-item .del { background: none; border: none; color: var(--danger); font-size: 12px; font-weight: 700; padding: 4px; }
+  .no-comments { color: var(--muted); font-size: 13px; padding: 4px 0; }
+  .comment-dot {
+    width: 7px; height: 7px; border-radius: 50%; background: var(--warm); display: inline-block; margin-left: 6px;
+  }
   .entry-log { margin-top: 18px; }
   .entry-log h3 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin: 0 0 8px; }
   .entry-item {
@@ -184,10 +223,21 @@ let state = {
   entries: [],
   loaded: false,
   toast: null,
-  emailTo: ""
+  emailTo: "",
+  comments: {},
+  commentDraft: "",
+  customProperties: [],
+  showAddProp: false,
+  addPropDraft: ""
 };
 
 const EMAIL_KEY = "laundry_notify_email";
+const COMMENTS_KEY = "laundry_comments";
+const CUSTOM_PROPS_KEY = "laundry_custom_properties";
+
+function allProperties() {
+  return [...PROPERTIES, ...state.customProperties].sort((a, b) => a.localeCompare(b));
+}
 
 async function loadEntries() {
   try {
@@ -201,8 +251,90 @@ async function loadEntries() {
   } catch (e) {
     state.emailTo = "";
   }
+  try {
+    const rawC = localStorage.getItem(COMMENTS_KEY);
+    state.comments = rawC ? JSON.parse(rawC) : {};
+  } catch (e) {
+    state.comments = {};
+  }
+  try {
+    const rawP = localStorage.getItem(CUSTOM_PROPS_KEY);
+    state.customProperties = rawP ? JSON.parse(rawP) : [];
+  } catch (e) {
+    state.customProperties = [];
+  }
   state.loaded = true;
   render();
+}
+
+async function saveComments() {
+  try {
+    localStorage.setItem(COMMENTS_KEY, JSON.stringify(state.comments));
+  } catch (e) {
+    console.error("Storage error", e);
+  }
+}
+
+function setCommentDraft(v) {
+  state.commentDraft = v;
+}
+
+async function addComment(room) {
+  const text = (state.commentDraft || "").trim();
+  if (!text) return;
+  if (!state.comments[room]) state.comments[room] = [];
+  state.comments[room].push({
+    id: Date.now() + "_" + Math.random().toString(36).slice(2, 7),
+    text,
+    ts: new Date().toISOString()
+  });
+  state.commentDraft = "";
+  await saveComments();
+  render();
+}
+
+async function deleteComment(room, id) {
+  if (!state.comments[room]) return;
+  state.comments[room] = state.comments[room].filter(c => c.id !== id);
+  await saveComments();
+  render();
+}
+
+async function saveCustomProperties() {
+  try {
+    localStorage.setItem(CUSTOM_PROPS_KEY, JSON.stringify(state.customProperties));
+  } catch (e) {
+    console.error("Storage error", e);
+  }
+}
+
+function toggleAddProp() {
+  state.showAddProp = !state.showAddProp;
+  state.addPropDraft = "";
+  render();
+}
+
+function setAddPropDraft(v) {
+  state.addPropDraft = v;
+}
+
+async function addNewProperty() {
+  const name = (state.addPropDraft || "").trim();
+  if (!name) return;
+  const exists = allProperties().some(p => p.toLowerCase() === name.toLowerCase());
+  if (exists) {
+    state.toast = "That property already exists";
+    render();
+    setTimeout(() => { state.toast = null; render(); }, 2200);
+    return;
+  }
+  state.customProperties.push(name);
+  await saveCustomProperties();
+  state.showAddProp = false;
+  state.addPropDraft = "";
+  state.toast = `Added "${shortName(name)}"`;
+  render();
+  setTimeout(() => { state.toast = null; render(); }, 2200);
 }
 
 async function saveEmail(addr) {
@@ -257,6 +389,7 @@ function goHome() {
 function openTally(room) {
   state.selectedRoom = room;
   state.taps = 0;
+  state.commentDraft = "";
   state.view = "tally";
   render();
 }
@@ -349,17 +482,25 @@ function renderTopbar(title, sub, showHistoryBtn) {
 
 function renderHome() {
   const q = state.search.trim().toLowerCase();
-  const filtered = PROPERTIES.filter(p => shortName(p).toLowerCase().includes(q) || p.toLowerCase().includes(q));
+  const props = allProperties();
+  const filtered = props.filter(p => shortName(p).toLowerCase().includes(q) || p.toLowerCase().includes(q));
   return `
-    ${renderTopbar("Laundry Log", `${PROPERTIES.length} properties`, true)}
+    ${renderTopbar("Laundry Log", `${props.length} properties`, true)}
     <main>
       <div class="search-wrap">
         <input type="text" placeholder="Search property..." value="${state.search.replace(/"/g,'&quot;')}" oninput="window.__search(this.value)" autocomplete="off">
+        <button class="btn-add-prop-toggle" onclick="window.__toggleAddProp()">${state.showAddProp ? "Cancel" : "+ Add new property"}</button>
+        ${state.showAddProp ? `
+          <div class="add-prop-panel">
+            <input type="text" placeholder="Property name..." value="${(state.addPropDraft || "").replace(/"/g,'&quot;')}" oninput="window.__addPropDraft(this.value)" autocomplete="off">
+            <button class="btn-add-comment" onclick="window.__saveNewProp()">Save</button>
+          </div>
+        ` : ""}
       </div>
       <div class="grid-scroll">
         ${filtered.length === 0 ? `<div class="no-results">No property matches "${state.search}"</div>` : `
           <div class="prop-grid">
-            ${filtered.map(p => `<button class="prop-card" onclick="window.__open('${p.replace(/'/g, "\\'")}')">${shortName(p)}</button>`).join("")}
+            ${filtered.map(p => `<button class="prop-card" onclick="window.__open('${p.replace(/'/g, "\\'")}')">${shortName(p)}${(state.comments[p] || []).length > 0 ? `<span class="comment-dot"></span>` : ""}</button>`).join("")}
           </div>
         `}
       </div>
@@ -391,6 +532,27 @@ function renderTally() {
           <button class="btn-save" ${state.taps === 0 ? "disabled" : ""} onclick="window.__save()">Save ${state.taps} load${state.taps === 1 ? "" : "s"}</button>
         </div>
         <button class="btn-cancel" onclick="window.__nav('home')">Cancel</button>
+
+        <div class="comments-section">
+          <h3>Comments</h3>
+          <div class="comment-input-row">
+            <textarea placeholder="Add a note about this property..." oninput="window.__commentDraft(this.value)">${state.commentDraft || ""}</textarea>
+            <button class="btn-add-comment" onclick="window.__addComment()">Add</button>
+          </div>
+          <div class="comment-list">
+            ${(state.comments[state.selectedRoom] || []).length === 0 ? `<div class="no-comments">No comments yet.</div>` : `
+              ${[...(state.comments[state.selectedRoom] || [])].sort((a, b) => new Date(b.ts) - new Date(a.ts)).map(c => `
+                <div class="comment-item">
+                  <div class="txt">${c.text.replace(/</g, "&lt;")}</div>
+                  <div class="meta">
+                    <span class="date">${new Date(c.ts).toLocaleDateString()}</span>
+                    <button class="del" onclick="window.__delComment('${c.id}')">Delete</button>
+                  </div>
+                </div>
+              `).join("")}
+            `}
+          </div>
+        </div>
       </div>
     </main>
   `;
@@ -475,6 +637,12 @@ window.__reset = () => resetMonth();
 window.__export = () => exportCSV();
 window.__setEmail = (v) => saveEmail(v);
 window.__emailToday = () => emailTodaysLog();
+window.__commentDraft = (v) => setCommentDraft(v);
+window.__addComment = () => addComment(state.selectedRoom);
+window.__delComment = (id) => deleteComment(state.selectedRoom, id);
+window.__toggleAddProp = () => toggleAddProp();
+window.__addPropDraft = (v) => setAddPropDraft(v);
+window.__saveNewProp = () => addNewProperty();
 
 loadEntries();
 </script>
